@@ -1,5 +1,6 @@
 from flask import Flask, send_from_directory, request, jsonify
 from firebaseConfig.firebaseConfig import db
+from service import create_user, login_user
 
 app = Flask(__name__)
 
@@ -7,17 +8,19 @@ app = Flask(__name__)
 def serve_index():
     return send_from_directory('static', 'index.html')
 
-@app.route('/user', methods=['POST'])  # creates a user in Firestore
+@app.route('/users', methods=['POST'])
 def create_user():
-    try:
-        user_data = request.get_json()
+    user_data = request.get_json()
+    return jsonify(create_user(user_data))
+      
+    
 
-        # Add the user to Firestore
-        user_ref = db.collection('users').add(user_data)
+@app.route('/users/login', methods=['POST'])
+def login():
+    login_data = request.get_json()
+    return jsonify(login_user(login_data))
 
-        return jsonify({"message": "User created successfully", "user_id": user_ref[1].id}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+      
 
 if __name__ == '__main__':
     app.run(debug=True)
