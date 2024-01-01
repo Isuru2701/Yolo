@@ -8,22 +8,26 @@ app = Flask(__name__)
 def serve_index():
     return send_from_directory('static', 'index.html')
 
-@app.route('/users', methods=['POST'])
+@app.route('/users', methods=['POST']) #
 def create_user():
     user_data = request.get_json()
     return jsonify(create_user(user_data))
-      
-    
 
 @app.route('/users/login', methods=['POST'])
 def login():
     login_data = request.get_json()
     return jsonify(login_user(login_data))
 
-@app.route('/movies')
+@app.route('/movies') #example request : http://localhost:5000/movies?keywords=marvel,adventure&media_type=movie
 def get_movies():
-    keywords = ['fighting', 'adventures', 'romantic']
-    return jsonify(media_from_keywords(keywords, "movie"))
+    keywords_param = request.args.get('keywords')
+    keywords = keywords_param.split(',') if keywords_param else []
+    media_type = request.args.get('media_type')
+    return media_from_keywords(keywords, media_type)
+    
+@app.route('/keywords', methods=['POST']) #post : http://localhost:5000/       [prompt : userprompt] as json
+def  get_keywords():
+    return get_my_keys(request.args.post('prompt'))
       
 @app.route('/api/media', methods=['GET'])
 def get_media():
@@ -45,7 +49,6 @@ def get_media():
         return jsonify(result)
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
