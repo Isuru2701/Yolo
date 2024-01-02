@@ -104,7 +104,7 @@ def media_from_keywords_and_search(keywords, media_type, title_results=5, keywor
 
     api_key = "7e16229611389f1788334e9c9ee5d934"
 
-    # Step 1: Basic Search
+    # Step 1: title an overview Search
     top_results_from_title = []
     try:
         for keyword in keywords:
@@ -115,7 +115,7 @@ def media_from_keywords_and_search(keywords, media_type, title_results=5, keywor
                 basic_search_data = response_search.json()
 
                 if 'results' in basic_search_data:
-                    # Take the top results from each keyword search
+                    # take the top results from each keyword search
                     for result in basic_search_data['results'][:title_results]:
                         # Check and add missing fields
                         if 'poster_path' not in result:
@@ -123,17 +123,18 @@ def media_from_keywords_and_search(keywords, media_type, title_results=5, keywor
                         if 'genre_ids' not in result:
                             result['genre_ids'] = []
                         
-                        # Replace genre IDs with names
+                        # replace genre ids with names
                         genre_names = []
                         for genre_id in result['genre_ids']:
                             genre = next((g for g in GENRE_DATA if g['id'] == genre_id), None)
                             if genre:
                                 genre_names.append(genre['name'])
                         result['genres'] = genre_names
+                        
                         # Remove 'genre_ids' as it's no longer needed
                         del result['genre_ids']
 
-                        # Correct the poster path
+                        # set full path to poster
                         if 'poster_path' in result:
                             result['poster_path'] = f"https://image.tmdb.org/t/p/w500{result['poster_path']}"
                         
@@ -149,7 +150,7 @@ def media_from_keywords_and_search(keywords, media_type, title_results=5, keywor
         print(f"An error occurred during basic search: {e}")
         return None
 
-    # Step 2: Refine Results with Keywords
+    # Step 2: keyword search
     keyword_ids = get_keyword_ids(api_key, keywords)
     keywords_str = ','.join(map(str, keyword_ids))
 

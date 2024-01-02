@@ -23,7 +23,7 @@ def get_movies():
     keywords_param = request.args.get('keywords')
     keywords = keywords_param.split(',') if keywords_param else []
     media_type = request.args.get('media_type')
-    return media_from_keywords(keywords, media_type)
+    return jsonify(media_from_keywords(keywords, media_type))
     
 @app.route('/keywords', methods=['POST']) #post : http://localhost:5000/       [prompt : userprompt] as json
 def  get_keywords():
