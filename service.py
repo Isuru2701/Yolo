@@ -330,6 +330,42 @@ def get_songs(keywords, media_type):
         print(f"Error during API call: {e}")
         return None
 
+def get_books(keywords):
+    url = "https://www.googleapis.com/books/v1/volumes"
+    q = ' '.join(keywords)
+    params = {'q': q}
+
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad requests
+        data = response.json()
+
+        # Customized return object list
+        books_list = []
+        for item in data.get("items", []):
+            volume_info = item.get("volumeInfo", {})
+            image_links = volume_info.get("imageLinks", {})
+            
+            thumbnail = image_links.get("thumbnail", "https://cdn.bookauthority.org/dist/images/book-cover-not-available.6b5a104fa66be4eec4fd16aebd34fe04.png")
+            
+            book_info = {
+                "thumbnail": thumbnail if thumbnail else "https://cdn.bookauthority.org/dist/images/book-cover-not-available.6b5a104fa66be4eec4fd16aebd34fe04.png",
+                "title": volume_info.get("title", "Data not available"),
+                "textSnippet": item.get("searchInfo", {}).get("textSnippet", "Data not available"),
+                "description": volume_info.get("description", "Data not available"),
+                "contentUrl": volume_info.get("previewLink", "Data not available"),
+                "publishDate": volume_info.get("publishedDate", "Data not available"),
+                "publisher": volume_info.get("publisher", "Data not available"),
+                "language": volume_info.get("language", "Data not available"),
+                "maturity": volume_info.get("maturityRating", "Data not available"),
+            }
+            books_list.append(book_info)
+
+        return books_list
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error during API call: {e}")
+        return None
 
 
 

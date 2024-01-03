@@ -37,6 +37,12 @@ def get_audio():
     result = get_songs(keywords_array, media_type)
     return jsonify(result)
 
+@app.route('/books') #example request : http://localhost:5000/books?keywords=marvel,adventure
+def get_reads():
+    keywords_string = request.args.get('keywords', default='', type=str)
+    keywords_array = keywords_string.split(',')
+    return jsonify(get_books(keywords_array))
+
       
 @app.route('/api/media', methods=['GET'])
 def get_media():
@@ -52,7 +58,7 @@ def get_media():
     elif media_type == "song":
         return jsonify(get_songs([title], media_type))   
     elif media_type == "book":
-        return "book fetching api under development"
+        return jsonify(get_books([title]))
 
     if result is not None:
         return jsonify(result)
