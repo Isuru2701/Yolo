@@ -367,6 +367,66 @@ def get_books(keywords):
         print(f"Error during API call: {e}")
         return None
 
+def get_anime(keywords, media_type):
+    url = "https://api.jikan.moe/v4/anime"  
+    q = ' '.join(keywords)
+    params = {
+        'q': q,
+        'type': media_type
+    }
+
+    try:
+        # Hit the API call and get the response object
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an HTTPError for bad responses
+
+        response_json = response.json()
+
+        # Customized return object list
+        anime_list = []
+        for item in response_json.get("data", []):
+            images = item.get("images", {})
+            thumbnail = images.get("jpg", {}).get("image_url", "Data not available")
+
+            titles = item.get("titles", [])
+            title = next((t.get("title", "Data not available") for t in titles if t.get("type") == "Default"), "Data not available")
+            japanese_title = next((t.get("title", "Data not available") for t in titles if t.get("type") == "Japanese"), "Data not available")
+
+            synopsis = item.get("synopsis", "Data not available")
+            more_info_url = item.get("url", "Data not available")
+
+            genres = [genre.get("name", "Data not available") for genre in item.get("genres", [])]
+            themes = [theme.get("name", "Data not available") for theme in item.get("themes", [])]
+
+            release_year = item.get("aired", {}).get("prop", {}).get("from", {}).get("year", "Data not available")
+            producers = [producer.get("name", "Data not available") for producer in item.get("producers", [])]
+            episodes_count = item.get("episodes", "Data not available")
+            rating = item.get("rating", "Data not available")
+
+            anime_info = {
+                "thumbnail": thumbnail,
+                "title": title,
+                "japanese_title": japanese_title,
+                "synopsis": synopsis,
+                "moreinfo_url": more_info_url,
+                "genres": genres,
+                "themes": themes,
+                "release_year": release_year,
+                "producers": producers,
+                "episodes_count": episodes_count,
+                "rating": rating,
+            }
+            anime_list.append(anime_info)
+
+        return anime_list
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error in making the request: {e}")
+        return []
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return []
 
 
 
