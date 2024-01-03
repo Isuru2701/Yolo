@@ -28,6 +28,15 @@ def get_movies():
 @app.route('/keywords', methods=['POST']) #post : http://localhost:5000/       [prompt : userprompt] as json
 def  get_keywords():
     return get_my_keys(request.args.post('prompt'))
+
+@app.route('/songs') #example request : http://localhost:5000/songs?keywords=marvel,adventure&media_type=song (song / video)
+def get_audio():
+    keywords_string = request.args.get('keywords', default='', type=str)
+    media_type = request.args.get('media_type', default='', type=str)
+    keywords_array = keywords_string.split(',')
+    result = get_songs(keywords_array, media_type)
+    return jsonify(result)
+
       
 @app.route('/api/media', methods=['GET'])
 def get_media():
@@ -41,7 +50,7 @@ def get_media():
     if media_type == "movie" or media_type == "tv":
         result = media_from_title(title=title, media_type=media_type)
     elif media_type == "song":
-        return "spotify API under development"   
+        return jsonify(get_songs([title], media_type))   
     elif media_type == "book":
         return "book fetching api under development"
 

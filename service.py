@@ -288,6 +288,48 @@ def get_keyword_ids(api_key, keyword):
 
     return keyword_ids
 
+def get_songs(keywords, media_type):
+    if media_type == 'song':
+        keywords.append('official music videos')
+    if media_type == 'video':
+        keywords.append('videos only')    
+    q = ' '.join(keywords)
+
+    api_key = "AIzaSyD1CFHMw7mPYugkVMCoeRd69HPDOlchJUo"
+    url = "https://www.googleapis.com/youtube/v3/search"
+    params = {
+        'q': q,
+        'part': 'snippet',
+        'maxResults': '10',
+        'type': 'video',
+        'order': 'rating',
+        'key': api_key
+    }
+
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad requests
+
+        # Extract relevant information from the API response
+        videos = response.json().get('items', [])
+
+        # Customize the return object for each video
+        formatted_videos = []
+        for video in videos:
+            formatted_video = {
+                'thumbnail': video['snippet']['thumbnails']['medium']['url'],
+                'title': video['snippet']['title'],
+                'video_url': f"https://www.youtube.com/watch?v={video['id']['videoId']}",
+                'publishDate': video['snippet']['publishTime']
+            }
+            formatted_videos.append(formatted_video)
+
+        return formatted_videos
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error during API call: {e}")
+        return None
+
 
 
 
