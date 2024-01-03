@@ -29,7 +29,6 @@ def get_movies():
     media_type = request.args.get('media_type')
     return jsonify(media_from_keywords(keywords, media_type))
 
-
 @app.route('/songs', methods=['GET']) #example request : http://localhost:5000/songs?keywords=marvel,adventure&media_type=song (song / video)
 def get_audio():
     keywords_string = request.args.get('keywords', default='', type=str)
@@ -61,6 +60,7 @@ def get_media():
 
     if not title or not media_type:
         return jsonify({"error": "Both 'title' and 'media_type' parameters are required."}), 400
+    
     if media_type == "movie" or media_type == "tv":
         result = media_from_title(title=title, media_type=media_type)
     elif media_type == "song":
@@ -71,6 +71,9 @@ def get_media():
         return jsonify(get_anime([title], 'movie'))
     elif media_type == "anime_tv":
         return jsonify(get_anime([title], 'tv'))
+    else:
+        return jsonify({"error": "Media_type invalid"}), 400
+    
 
     if result is not None:
         return jsonify(result)
