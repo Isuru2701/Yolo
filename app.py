@@ -1,26 +1,53 @@
 from flask import Flask, send_from_directory, request, jsonify
 from firebaseConfig.firebaseConfig import db
 from service import *
+from flask_cors import CORS
 
 app = Flask(__name__)
+
+CORS(app)
 
 @app.route('/')  # serves UI
 def serve_index():
     return send_from_directory('static', 'index.html')
 
-@app.route('/users', methods=['POST']) #
+@app.route('/users', methods=['POST'])
 def create_user():
     user_data = request.get_json()
-    return jsonify(create_user(user_data))
+
+    # Validate email uniqueness before creating the user
+    existing_user = db.collection('users').where('email', '==', user_data.get('email')).get()
+    if existing_user:
+        return {"success": False, "message": "User with this email already exists", "user_id": None}
+
+    try:
+        # Add the user to Firestore
+        user_ref = db.collection('users').add(user_data)
+
+        return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
+    except Exception as e:
+        return {"success": False, "message": str(e), "user_id": None}
 
 @app.route('/users/login', methods=['POST'])
 def login():
     login_data = request.get_json()
-    return jsonify(login_user(login_data))
+    try:
+        # Query Firestore for the user with provided email and password
+        users_ref = db.collection('users')
+        query = users_ref.where('email', '==', login_data['email']).where('password', '==', login_data['password']).limit(1).get()
 
-@app.route('/keywords', methods=['POST']) #post : http://localhost:5000/       [prompt : userprompt] as json
+        if not query:
+            return {"success": False, "message": "Invalid email or password", "user": None}
+
+        user = query[0].to_dict()
+
+        return {"success": True, "message": "Login successful", "user": user}
+    except Exception as e:
+        return {"success": False, "message": str(e), "user": None}
+
+@app.route('/keywords', methods=['GET']) #post : http://localhost:5000/       [prompt : userprompt] as json
 def  get_keywords():
-    return get_my_keys(request.args.post('prompt'))
+    return get_my_keys(request.args.get('prompt'))
 
 @app.route('/movies', methods=['GET']) #example request : http://localhost:5000/movies?keywords=marvel,adventure&media_type=movie (movie / tv)
 def get_movies():
