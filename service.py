@@ -258,7 +258,7 @@ def get_songs(keywords, media_type):
     params = {
         'q': q,
         'part': 'snippet',
-        'maxResults': '10',
+        'maxResults': '20',
         'type': 'video',
         'order': 'rating',
         'key': api_key
