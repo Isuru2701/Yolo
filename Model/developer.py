@@ -18,3 +18,7 @@ class Developer(GenericUser):
 
     def invalidateToken(self):
         pass
+
+    def fetch(self):
+        pass
+        # TODO: get info from firebase here

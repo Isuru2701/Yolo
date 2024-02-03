@@ -1,5 +1,6 @@
 from genericuser import GenericUser
 
+
 class ContentCreator(GenericUser):
     """
     class for handling the content creator user
