@@ -107,5 +107,24 @@ def get_media():
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
 
+
+# developer API endpoint
+@app.route('/developers')
+def fetchInfo(name:str):
+    #TODO: if it's been a month, reset the quota
+    #Note: All tokens share the same quota
+    pass
+
+@app.route('developers/generate')
+def generateToken():
+    pass
+
+@app.route('developers/invalidate')
+def invalidateToken():
+    pass
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
