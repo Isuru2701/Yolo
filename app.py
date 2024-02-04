@@ -7,14 +7,33 @@ app = Flask(__name__)
 
 CORS(app)
 
-@app.route('/')  # serves UI
+@app.route('/', methods=['GET'])  # serves UI
 def serve_index():
     return send_from_directory('static', 'index.html')
+
+@app.route('/create_admin', methods=['GET'])
+def create_admin(name, email, password):
+    name = input("Enter admin Name: ")
+    email = input("Enter admin Email: ")
+    password = input("Enter admin Password: ")
+    existing_users = db.collection('admin').where('email', '==', email).limit(1).get()
+
+    if existing_users:
+        return {"success": False, "message": "User with this email already exists", "user_id": None}
+
+    # Add the user to Firestore
+    hashed_password = hash_password(password)
+    admin_data = {
+        "name": name,
+        "email": email,
+        "password": hashed_password.decode('utf-8')  # Convert bytes to string
+    }
+    user_ref = db.collection('admin').add(admin_data)
+    return {"success": True, "message": "User created successfully", "user_id": user_ref.id}
 
 @app.route('/users', methods=['POST'])
 def create_user():
     user_data = request.get_json()
-
     # Validate email uniqueness before creating the user
     existing_user = db.collection('users').where('email', '==', user_data.get('email')).get()
     if existing_user:
@@ -22,11 +41,33 @@ def create_user():
 
     try:
         # Add the user to Firestore
+        user_data['password'] = hash_password(user_data['password']);
         user_ref = db.collection('users').add(user_data)
-
         return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
     except Exception as e:
         return {"success": False, "message": str(e), "user_id": None}
+
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    login_data = request.get_json()
+    try:
+        # Query Firestore for the user with provided email
+        users_ref = db.collection('admin')
+        query = users_ref.where('a_email', '==', login_data['email']).limit(1).get()
+
+        if not query:
+            return {"success": False, "message": "Invalid email or password", "user": None}
+
+        user = query[0].to_dict()
+
+        # Verify the password using bcrypt
+        if not verify_password(login_data['password'], user['a_hash_key']):
+            return {"success": False, "message": "Invalid email or password", "user": None}
+
+        return {"success": True, "message": "Login successful", "user": user}
+    except Exception as e:
+        return {"success": False, "message": str(e), "user": None}
+
 
 @app.route('/users/login', methods=['POST'])
 def login():
@@ -34,14 +75,19 @@ def login():
     try:
         # Query Firestore for the user with provided email and password
         users_ref = db.collection('users')
-        query = users_ref.where('email', '==', login_data['email']).where('password', '==', login_data['password']).limit(1).get()
+        query = users_ref.where('email', '==', login_data['email']).limit(1).get()
 
         if not query:
             return {"success": False, "message": "Invalid email or password", "user": None}
 
         user = query[0].to_dict()
-
-        return {"success": True, "message": "Login successful", "user": user}
+        user['confirmPassword'] = '' 
+        print(user['password'])
+        # Verify the password using bcrypt
+        if not verify_password(login_data['password'], user['password']):
+            return {"success": False, "message": "Invalid email or password", "user": None}
+        
+        return {"success": True, "message": "Login successful", "user": user['name']}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
 
@@ -106,6 +152,8 @@ def get_media():
         return jsonify(result)
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
+    
+
 
 if __name__ == '__main__':
     app.run(debug=True)
