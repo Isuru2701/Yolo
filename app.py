@@ -11,25 +11,62 @@ CORS(app)
 def serve_index():
     return send_from_directory('static', 'index.html')
 
-@app.route('/create_admin', methods=['GET'])
-def create_admin(name, email, password):
-    name = input("Enter admin Name: ")
-    email = input("Enter admin Email: ")
-    password = input("Enter admin Password: ")
-    existing_users = db.collection('admin').where('email', '==', email).limit(1).get()
-
-    if existing_users:
-        return {"success": False, "message": "User with this email already exists", "user_id": None}
-
-    # Add the user to Firestore
-    hashed_password = hash_password(password)
-    admin_data = {
-        "name": name,
-        "email": email,
-        "password": hashed_password.decode('utf-8')  # Convert bytes to string
+@app.route('/admin', methods=['POST'])
+def create_admin():
+    """
+    **** example payload ***
+    {
+    "name": "induwara lakindu",
+    "email": "induwaralakindu09@gmail.com",
+    "password": "Lakindu123",
+    "confirmPassword": "Lakindu123",
+    "permission_key": "YOLO_SECURITY_CODE_71862736"
     }
-    user_ref = db.collection('admin').add(admin_data)
-    return {"success": True, "message": "User created successfully", "user_id": user_ref.id}
+    """
+    user_data = request.get_json()
+    # Validate email uniqueness before creating the user
+    existing_user = db.collection('admin').where('email', '==', user_data.get('email')).get()
+    if existing_user:
+        return {"success": False, "message": "User with this email already exists", "user_id": None}
+    
+    if user_data['permission_key'] != "YOLO_SECURITY_CODE_71862736":
+        return {"success": False, "message": "Request Rejected Unautharized access detected!", "user_id": None}
+    
+    if user_data['password'] != user_data['confirmPassword']:
+        return {"success": False, "message": "Password mismatch, try again", "user_id": None}
+
+
+    try:
+        # Add the user to Firestore
+        user_data['confirmPassword'] = ''
+        user_data['password'] = hash_password(user_data['password'])
+        user_ref = db.collection('admin').add(user_data)
+        return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
+    except Exception as e:
+        return {"success": False, "message": str(e), "user_id": None}
+
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    login_data = request.get_json()
+    try:
+        # Query Firestore for the user with provided email and password
+        users_ref = db.collection('admin')
+        query = users_ref.where('email', '==', login_data['email']).limit(1).get()
+
+        if not query:
+            return {"success": False, "message": "Invalid email or password", "user": None}
+
+        user = query[0].to_dict()
+        user['confirmPassword'] = '' 
+        print(user['password'])
+        # Verify the password using bcrypt
+        if not verify_password(login_data['password'], user['password']):
+            return {"success": False, "message": "Invalid email or password", "user": None}
+        
+        return {"success": True, "message": "Login successful", "user": user['name']}
+    except Exception as e:
+        return {"success": False, "message": str(e), "user": None}
+
 
 @app.route('/users', methods=['POST'])
 def create_user():
@@ -40,34 +77,13 @@ def create_user():
         return {"success": False, "message": "User with this email already exists", "user_id": None}
 
     try:
+        user_data['confirmPassword'] = ''
         # Add the user to Firestore
-        user_data['password'] = hash_password(user_data['password']);
+        user_data['password'] = hash_password(user_data['password'])
         user_ref = db.collection('users').add(user_data)
         return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
     except Exception as e:
         return {"success": False, "message": str(e), "user_id": None}
-
-@app.route('/admin/login', methods=['POST'])
-def admin_login():
-    login_data = request.get_json()
-    try:
-        # Query Firestore for the user with provided email
-        users_ref = db.collection('admin')
-        query = users_ref.where('a_email', '==', login_data['email']).limit(1).get()
-
-        if not query:
-            return {"success": False, "message": "Invalid email or password", "user": None}
-
-        user = query[0].to_dict()
-
-        # Verify the password using bcrypt
-        if not verify_password(login_data['password'], user['a_hash_key']):
-            return {"success": False, "message": "Invalid email or password", "user": None}
-
-        return {"success": True, "message": "Login successful", "user": user}
-    except Exception as e:
-        return {"success": False, "message": str(e), "user": None}
-
 
 @app.route('/users/login', methods=['POST'])
 def login():
@@ -80,8 +96,7 @@ def login():
         if not query:
             return {"success": False, "message": "Invalid email or password", "user": None}
 
-        user = query[0].to_dict()
-        user['confirmPassword'] = '' 
+        user = query[0].to_dict() 
         print(user['password'])
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
