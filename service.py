@@ -4,6 +4,7 @@ from genres import GENRE_DATA
 from engine import keyword_engine
 import time
 from random import shuffle
+import bcrypt
 
 def media_from_keywords(keywords, media_type):
     url = "https://api.themoviedb.org/3/discover/" + media_type
@@ -385,6 +386,18 @@ def get_anime(keywords, media_type):
     except Exception as e:
         print(f"Unexpected error: {e}")
         return []
+
+def verify_password(password, hashed_password):
+    print(password.encode('utf-8'))
+    print(hashed_password)
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
+
+
+def hash_password(password):
+    # Generate a salt and hash the password
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed_password
 
 
 

@@ -2,7 +2,7 @@ import os
 import secrets
 import json
 import firebase_admin
-from firebase_admin import credentials, firestore, db, exceptions
+from firebase_admin import credentials, firestore, db
 
 try:
 
