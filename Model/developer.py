@@ -7,8 +7,9 @@ class Developer(GenericUser):
     each developer has a quota, a used amount, and one or more access tokens
     """
 
-    def __init__(self):
+    def __init__(self, id):
         super().__init__()
+        self.__id = id
         self.__quota: int = 10000
         self.__usage: int = 0
         self.__accessTokens: list = []  # List of valid strings

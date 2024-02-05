@@ -3,6 +3,8 @@ from firebaseConfig.firebaseConfig import db
 from service import *
 from flask_cors import CORS
 
+from firebaseConfig.FirebaseDriver import FirebaseDriver
+
 app = Flask(__name__)
 
 CORS(app)
@@ -199,7 +201,7 @@ def invalidateToken():
     pass
 
 
-# developer API endpoint
+# developer related API endpoints
 @app.route('/developers')
 def fetch_dev_info(name: str):
     # TODO: if it's been a month, reset the quota
@@ -215,6 +217,16 @@ def generateApiToken():
 @app.route('/developers/invalidate')
 def invalidateApiToken():
     pass
+
+
+@app.route('/api/', method=['POST'])
+def processRequest():
+    """
+    every api call must have the following:
+
+    :return:
+    """
+
 
 
 if __name__ == '__main__':
