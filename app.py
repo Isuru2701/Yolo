@@ -7,6 +7,7 @@ app = Flask(__name__)
 
 CORS(app)
 
+
 @app.route('/', methods=['GET'])  # serves UI
 def serve_index():
     return send_from_directory('static', 'index.html')
@@ -85,6 +86,7 @@ def create_user():
     except Exception as e:
         return {"success": False, "message": str(e), "user_id": None}
 
+
 @app.route('/users/login', methods=['POST'])
 def login():
     login_data = request.get_json()
@@ -106,18 +108,23 @@ def login():
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
 
-@app.route('/keywords', methods=['GET']) #post : http://localhost:5000/       [prompt : userprompt] as json
-def  get_keywords():
+
+@app.route('/keywords', methods=['GET'])  # post : http://localhost:5000/       [prompt : userprompt] as json
+def get_keywords():
     return get_my_keys(request.args.get('prompt'))
 
-@app.route('/movies', methods=['GET']) #example request : http://localhost:5000/movies?keywords=marvel,adventure&media_type=movie (movie / tv)
+
+@app.route('/movies', methods=[
+    'GET'])  # example request : http://localhost:5000/movies?keywords=marvel,adventure&media_type=movie (movie / tv)
 def get_movies():
     keywords_param = request.args.get('keywords')
     keywords = keywords_param.split(',') if keywords_param else []
     media_type = request.args.get('media_type')
     return jsonify(media_from_keywords(keywords, media_type))
 
-@app.route('/songs', methods=['GET']) #example request : http://localhost:5000/songs?keywords=marvel,adventure&media_type=song (song / video)
+
+@app.route('/songs', methods=[
+    'GET'])  # example request : http://localhost:5000/songs?keywords=marvel,adventure&media_type=song (song / video)
 def get_audio():
     keywords_string = request.args.get('keywords', default='', type=str)
     media_type = request.args.get('media_type', default='', type=str)
@@ -125,13 +132,16 @@ def get_audio():
     result = get_songs(keywords_array, media_type)
     return jsonify(result)
 
-@app.route('/books', methods=['GET']) #example request : http://localhost:5000/books?keywords=marvel,adventure
+
+@app.route('/books', methods=['GET'])  # example request : http://localhost:5000/books?keywords=marvel,adventure
 def get_reads():
     keywords_string = request.args.get('keywords', default='', type=str)
     keywords_array = keywords_string.split(',')
     return jsonify(get_books(keywords_array))
-      
-@app.route('/anime', methods=['GET']) #example request : http://localhost:5000/anime?keywords=marvel,adventure&media_type=movie (movie / tv)
+
+
+@app.route('/anime', methods=[
+    'GET'])  # example request : http://localhost:5000/anime?keywords=marvel,adventure&media_type=movie (movie / tv)
 def get_animes():
     keywords_string = request.args.get('keywords', default='', type=str)
     media_type = request.args.get('media_type', default='', type=str)
@@ -139,8 +149,9 @@ def get_animes():
     return get_anime(keywords_array, media_type)
 
 
-#public endpoint need a dynamic api key assiging and validation for developer role unlocked users
-@app.route('/api/media', methods=['GET']) #example request : http://localhost:5000/api/media?title=TITLE_OF_THE_CONTENT&media_type=MEDIA (movie,tv, anime_movie, anime_tv, song, book)
+# public endpoint need a dynamic api key assiging and validation for developer role unlocked users
+@app.route('/api/media', methods=[
+    'GET'])  # example request : http://localhost:5000/api/media?title=TITLE_OF_THE_CONTENT&media_type=MEDIA (movie,tv, anime_movie, anime_tv, song, book)
 def get_media():
     # Get parameters from the query string
     title = request.args.get('title', default='', type=str)
@@ -148,11 +159,11 @@ def get_media():
 
     if not title or not media_type:
         return jsonify({"error": "Both 'title' and 'media_type' parameters are required."}), 400
-    
+
     if media_type == "movie" or media_type == "tv":
         result = media_from_title(title=title, media_type=media_type)
     elif media_type == "song":
-        return jsonify(get_songs([title], media_type))   
+        return jsonify(get_songs([title], media_type))
     elif media_type == "book":
         return jsonify(get_books([title]))
     elif media_type == "anime_movie":
@@ -161,13 +172,49 @@ def get_media():
         return jsonify(get_anime([title], 'tv'))
     else:
         return jsonify({"error": "Media_type invalid"}), 400
-    
 
     if result is not None:
         return jsonify(result)
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
     
+
+
+
+# developer API endpoint
+@app.route('/developers')
+def fetchInfo(name: str):
+    # TODO: if it's been a month, reset the quota
+    # Note: All tokens share the same quota
+    pass
+
+
+@app.route('/developers/generate')
+def generateToken():
+    pass
+
+
+@app.route('/developers/invalidate')
+def invalidateToken():
+    pass
+
+
+# developer API endpoint
+@app.route('/developers')
+def fetch_dev_info(name: str):
+    # TODO: if it's been a month, reset the quota
+    # Note: All tokens share the same quota
+    pass
+
+
+@app.route('/developers/generate')
+def generateApiToken():
+    pass
+
+
+@app.route('/developers/invalidate')
+def invalidateApiToken():
+    pass
 
 
 if __name__ == '__main__':
