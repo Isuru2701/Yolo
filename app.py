@@ -334,8 +334,22 @@ def webhook_received():
 
 
 # Collections endpoints
-@app.route('/collections/ ', methods=["GET"])
+
+@app.route('/collections/', methods=['GET'])
 def fetch_collections():
+    collections = []
+
+    # Query all collections
+    collection_ref = db.collection('collections').stream()
+    for doc in collection_ref:
+        collection_data = doc.to_dict()
+        collections.append(collection_data)
+
+    return jsonify(collections), 200
+
+
+@app.route('/collections/search ', methods=["GET"])
+def search_collections():
     keys = request.args.get('keys')
     print(keys)
     if keys:
@@ -375,13 +389,26 @@ def create_collection():
     return jsonify({'message': 'Collection created successfully', 'collection_id': unique_id}), 201
 
 
-@app.route('/collections/<str:id>', methods=['DELETE'])
-def delete_collections():
-    pass
+@app.route('/collections/<collection_id>', methods=['DELETE'])
+def delete_collections(collection_id):
+    # Check if the collection exists
+    collection_ref = db.collection('collections').document(collection_id)
+    if not collection_ref.get().exists:
+        return jsonify({'error': 'Collection not found'}), 404
+
+    # Delete the collection
+    collection_ref.delete()
+
+    return jsonify({'message': 'Collection deleted successfully'}), 200
 
 
 @app.route('/collections/', methods=["PUT"])
 def edit_collections():
+    pass
+
+
+@app.route('/collections/', methods=['POST'])
+def assign_collections():
     pass
 
 
