@@ -6,6 +6,7 @@ import stripe
 import os
 from dotenv import load_dotenv
 import json
+import uuid
 
 from firebaseConfig.FirebaseDriver import FirebaseDriver
 
@@ -13,15 +14,17 @@ app = Flask(__name__)
 
 CORS(app)
 
-load_dotenv() # loads env variables from project's root
+load_dotenv()  # loads env variables from project's root
 
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 
-YOUR_DOMAIN = 'http://localhost:4242' # Change later
+YOUR_DOMAIN = 'http://localhost:4242'  # Change later
+
 
 @app.route('/', methods=['GET'])  # serves UI
 def serve_index():
     return send_from_directory('static', 'index.html')
+
 
 @app.route('/admin', methods=['POST'])
 def create_admin():
@@ -40,13 +43,12 @@ def create_admin():
     existing_user = db.collection('admin').where('email', '==', user_data.get('email')).get()
     if existing_user:
         return {"success": False, "message": "User with this email already exists", "user_id": None}
-    
+
     if user_data['permission_key'] != "YOLO_SECURITY_CODE_71862736":
         return {"success": False, "message": "Request Rejected Unautharized access detected!", "user_id": None}
-    
+
     if user_data['password'] != user_data['confirmPassword']:
         return {"success": False, "message": "Password mismatch, try again", "user_id": None}
-
 
     try:
         # Add the user to Firestore
@@ -56,6 +58,7 @@ def create_admin():
         return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
     except Exception as e:
         return {"success": False, "message": str(e), "user_id": None}
+
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
@@ -69,12 +72,12 @@ def admin_login():
             return {"success": False, "message": "Invalid email or password", "user": None}
 
         user = query[0].to_dict()
-        user['confirmPassword'] = '' 
+        user['confirmPassword'] = ''
         print(user['password'])
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
             return {"success": False, "message": "Invalid email or password", "user": None}
-        
+
         return {"success": True, "message": "Login successful", "user": user['name']}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
@@ -109,12 +112,12 @@ def login():
         if not query:
             return {"success": False, "message": "Invalid email or password", "user": None}
 
-        user = query[0].to_dict() 
+        user = query[0].to_dict()
         print(user['password'])
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
             return {"success": False, "message": "Invalid email or password", "user": None}
-        
+
         return {"success": True, "message": "Login successful", "user": user['name']}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
@@ -188,8 +191,6 @@ def get_media():
         return jsonify(result)
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
-    
-
 
 
 # developer API endpoint
@@ -238,7 +239,6 @@ def make_payment():
     details = request.get_json()
 
 
-
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     """
@@ -271,10 +271,11 @@ def create_checkout_session():
         print(e)
         return "Server error", 500
 
+
 @app.route('/create-portal-session', methods=['POST'])
 def customer_portal():
     # For demonstration purposes, we're using the Checkout session to retrieve the customer ID.
-    # Typically this is stored alongside the authenticated user in your database.
+    # Typically, this is stored alongside the authenticated user in your database.
     checkout_session_id = request.form.get('session_id')
     checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
 
@@ -287,7 +288,6 @@ def customer_portal():
         return_url=return_url,
     )
     return redirect(portalSession.url, code=303)
-
 
 
 @app.route('/webhook', methods=['POST'])
@@ -332,6 +332,57 @@ def webhook_received():
 
     return jsonify({'status': 'success'})
 
+
+# Collections endpoints
+@app.route('/collections/ ', methods=["GET"])
+def fetch_collections():
+    keys = request.args.get('keys')
+    print(keys)
+    if keys:
+        key_list = keys.split(',')
+    else:
+        return jsonify({'error': "EMPTY_KEYS"}), 400
+
+
+@app.route('/collections/', methods=['POST'])
+def create_collection():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No JSON data received'}), 400
+
+    # Extracting fields from the JSON
+    title = data.get('title')
+    description = data.get('description')
+    keywords = data.get('keywords')
+    contents = list(data.get('contents'))
+    duration = data.get('duration')
+    premium = data.get('premium')
+
+    # Generate a unique ID
+    unique_id = str(uuid.uuid4())
+
+    # Write data to Firestore
+    collection_ref = db.collection('collections').document(unique_id)
+    collection_ref.set({
+        'title': title,
+        'description': description,
+        'keywords': keywords,
+        'contents': contents,
+        'duration': duration,
+        'premium': premium
+    })
+
+    return jsonify({'message': 'Collection created successfully', 'collection_id': unique_id}), 201
+
+
+@app.route('/collections/<str:id>', methods=['DELETE'])
+def delete_collections():
+    pass
+
+
+@app.route('/collections/', methods=["PUT"])
+def edit_collections():
+    pass
 
 
 if __name__ == '__main__':
