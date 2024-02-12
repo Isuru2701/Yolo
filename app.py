@@ -1,5 +1,4 @@
 from flask import Flask, send_from_directory, request, jsonify, redirect
-from firebaseConfig.firebaseConfig import db
 from service import *
 from flask_cors import CORS
 import stripe
@@ -279,6 +278,8 @@ def processRequest():
     """
     pass
 
+# Content creators
+
 @app.route('/creator', methods=['POST'])
 def updateCreatorRole():
     """
@@ -324,6 +325,58 @@ def updateCreatorRole():
         else:
             return {"success": False, "message": "User does not exist. Please log in again"}
 
+
+# check all boost requests
+@app.route('/creator/requests/', methods=['GET'])
+def fetch_all_requests():
+    contents = []
+
+    # Query all collections
+    contents_ref = db.collection('content').stream()
+    for doc in contents_ref:
+        contents_data = doc.to_dict()
+        contents.append(contents_data)
+
+    return jsonify(contents), 200
+
+
+#accept or reject boost request
+@app.route('/creator/requests/validate', methods=['POST'])
+def validate_requests():
+    """
+    payload{
+        "request_id": "",
+        "admin": "admin_id",
+        "hash": "admin_password_hash",
+        "status": "true/false"
+    }
+    :return:
+    """
+
+    #check if admin
+
+
+    data = request.get_json()
+    r_id = data.get('request_id')
+    approval = data.get('status') #boolean True or False
+
+    contents_ref = db.collection('content').document(r_id)
+    contents_ref.update({
+        'status': 'approved' if approval else 'rejected'
+    })
+
+    return jsonify({'message': 'Request updated successfully'}), 200
+
+
+
+
+
+
+
+#register for premium
+@app.route('/user/premium/record', methods=['POST'])
+def register_for_premium():
+    pass
 
 
 @app.route('/content', methods=['POST'])
@@ -493,12 +546,17 @@ def fetch_collections():
 
 @app.route('/collections/search ', methods=["GET"])
 def search_collections():
+    """
+    /collections/search?keys=key_1,key_2,key_3....key_n
+    """
     keys = request.args.get('keys')
     print(keys)
     if keys:
         key_list = keys.split(',')
     else:
         return jsonify({'error': "EMPTY_KEYS"}), 400
+
+
 
 
 @app.route('/collections/', methods=['POST'])
@@ -526,7 +584,7 @@ def create_collection():
     collection_ref.set({
         'title': title,
         'description': description,
-        'keywords': keywords,
+        'keywords': keywords.split(','),
         'contents': contents,
         'duration': duration,
         'premium': premium

@@ -1,0 +1,7 @@
+requests~=2.27.1
+stripe~=8.2.0
+Flask~=2.3.3
+python-dotenv~=1.0.0
+DateTime~=4.3
+twilio~=8.13.0
+bcrypt~=4.1.2
