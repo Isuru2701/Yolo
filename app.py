@@ -333,6 +333,10 @@ def updateCreatorRole():
 
 
 # check all boost requests
+@app.route('/creators/request', methods=['POST'])
+def create_request():
+    pass
+
 @app.route('/creators/requests/', methods=['GET'])
 def fetch_all_requests():
     contents = []
@@ -374,19 +378,34 @@ def validate_requests():
 
 
 # register for premium
-@app.route('/user/premium/record', methods=['POST'])
+@app.route('/users/premium/record', methods=['POST'])
 def register_for_premium():
     """
     after paying for premium, the user can register for premium
     {
     email : induwaralakindu09@.mail.com,
-     premium: true
-     }
+    premium: true
+    }
     :return:
     """
 
     data = request.get_json()
-email = data.get('email')
+    email = data.get('email')
+    premium = data.get('premium')
+
+    billing_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    user_ref = db.collection('users').where('email', '==', email).limit(1).get()
+    user_docs = list(user_ref)
+    if len(user_docs) == 1:
+        user_docs[0].reference.set({
+            'premium': premium,
+            'billingDate': billing_date
+        }, merge=True)
+        return {"success": True, "message": "User registered for premium"}, 200
+    else:
+        return {"success": False, "message": "User does not exist"}, 404
+
 
 
 
