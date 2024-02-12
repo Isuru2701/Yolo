@@ -446,3 +446,4 @@ def send_message(otp, phone):
                                 to=to_whatsapp_number
                             )
     return True
+

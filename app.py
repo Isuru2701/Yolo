@@ -375,7 +375,19 @@ def validate_requests():
 # register for premium
 @app.route('/user/premium/record', methods=['POST'])
 def register_for_premium():
-    pass
+    """
+    after paying for premium, the user can register for premium
+    {
+    email : induwaralakindu09@.mail.com,
+     premium: true
+     }
+    :return:
+    """
+
+    data = request.get_json()
+email = data.get('email')
+
+
 
 
 @app.route('/content', methods=['POST'])
