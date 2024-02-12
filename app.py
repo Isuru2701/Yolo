@@ -569,7 +569,7 @@ def create_collection():
     title = data.get('title')
     description = data.get('description')
     keywords = data.get('keywords')
-    contents = list(data.get('contents'))
+    contents = data.get('contents')
     duration = data.get('duration')
     premium = data.get('premium')
 
