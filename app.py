@@ -28,7 +28,7 @@ def send_otp():
     try:
         # Get phone number from request data
         phone = request.json['phone']
-        
+
         # Generate a random 6-digit OTP
         otp = ''.join(random.choices('0123456789', k=6))
 
@@ -44,6 +44,7 @@ def send_otp():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+
 # Endpoint to check OTP
 @app.route('/otp/check', methods=['POST'])
 def check_otp():
@@ -56,7 +57,7 @@ def check_otp():
         stored_otp_doc = db.collection('creator_validation_otps').document(phone).get()
         if stored_otp_doc.exists:
             stored_otp = stored_otp_doc.to_dict()['otp']
-            
+
             # Check if user-entered OTP matches stored OTP
             if str(user_entered_otp) == stored_otp:
                 return jsonify({'success': True, 'message': 'OTP validated successfully'})
@@ -66,7 +67,8 @@ def check_otp():
             return jsonify({'success': False, 'message': 'No OTP found for the provided phone number'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
-    
+
+
 @app.route('/', methods=['GET'])  # serves UI
 def serve_index():
     return send_from_directory('static', 'index.html')
@@ -159,12 +161,13 @@ def login():
         if not query:
             return {"success": False, "message": "Invalid email or password", "user": None}
 
-        user = query[0].to_dict() 
+        user = query[0].to_dict()
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
             return {"success": False, "message": "Invalid email or password", "user": None}
         key = user['password'].decode('utf-8')
-        return {"success": True, "message": "Login successful", "user": user['name'],"email" : user['email'], "role": user['role'], "password" : key}
+        return {"success": True, "message": "Login successful", "user": user['name'], "email": user['email'],
+                "role": user['role'], "password": key}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
 
@@ -200,7 +203,8 @@ def get_reads():
     return jsonify(get_books(keywords_array))
 
 
-@app.route('/anime', methods=['GET'])  # example request : http://localhost:5000/anime?keywords=marvel,adventure&media_type=movie (movie / tv)
+@app.route('/anime', methods=[
+    'GET'])  # example request : http://localhost:5000/anime?keywords=marvel,adventure&media_type=movie (movie / tv)
 def get_animes():
     keywords_string = request.args.get('keywords', default='', type=str)
     media_type = request.args.get('media_type', default='', type=str)
@@ -278,9 +282,10 @@ def processRequest():
     """
     pass
 
+
 # Content creators
 
-@app.route('/creator', methods=['POST'])
+@app.route('/creators/', methods=['POST'])
 def updateCreatorRole():
     """
     Update the user's role to content creator based on the provided user ID and password hash,
@@ -327,7 +332,7 @@ def updateCreatorRole():
 
 
 # check all boost requests
-@app.route('/creator/requests/', methods=['GET'])
+@app.route('/creators/requests/', methods=['GET'])
 def fetch_all_requests():
     contents = []
 
@@ -340,8 +345,8 @@ def fetch_all_requests():
     return jsonify(contents), 200
 
 
-#accept or reject boost request
-@app.route('/creator/requests/validate', methods=['POST'])
+# accept or reject boost request
+@app.route('/creators/requests/validate', methods=['POST'])
 def validate_requests():
     """
     payload{
@@ -353,12 +358,11 @@ def validate_requests():
     :return:
     """
 
-    #check if admin
-
+    # check if admin
 
     data = request.get_json()
     r_id = data.get('request_id')
-    approval = data.get('status') #boolean True or False
+    approval = data.get('status')  # boolean True or False
 
     contents_ref = db.collection('content').document(r_id)
     contents_ref.update({
@@ -368,12 +372,7 @@ def validate_requests():
     return jsonify({'message': 'Request updated successfully'}), 200
 
 
-
-
-
-
-
-#register for premium
+# register for premium
 @app.route('/user/premium/record', methods=['POST'])
 def register_for_premium():
     pass
@@ -396,7 +395,7 @@ def saveContent():
     try:
         content_data = request.get_json()
         content_data['status'] = "pending"
-        
+
         # Save content data to Firestore collection
         doc_ref = db.collection('content').document()
         doc_ref.set(content_data)
@@ -404,6 +403,7 @@ def saveContent():
         return {"success": True, "message": "Data saved successfully"}, 200
     except Exception as e:
         return {"success": False, "error": str(e)}, 500
+
 
 @app.route('/admin/content/approve', methods=['post'])
 def updateContentStatus():
@@ -414,9 +414,9 @@ def updateContentStatus():
         }
     """
     content_data = request.get_json()
-    #check the role as admin?
-    
-    #update the content 
+    # check the role as admin?
+
+    # update the content
     content_data['status'] = "approved"
     current_datetime = datetime.now()
     formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
@@ -442,13 +442,12 @@ def create_checkout_session():
 
     print(stripe.api_key)
     prices = stripe.Price.list(
-            lookup_keys=[payment_data['lookup_key']],
-            expand=['data.product']
-        )
+        lookup_keys=[payment_data['lookup_key']],
+        expand=['data.product']
+    )
     print(prices)
-    
+
     try:
-        
 
         checkout_session = stripe.checkout.Session.create(
             line_items=[
@@ -555,8 +554,6 @@ def search_collections():
         key_list = keys.split(',')
     else:
         return jsonify({'error': "EMPTY_KEYS"}), 400
-
-
 
 
 @app.route('/collections/', methods=['POST'])
