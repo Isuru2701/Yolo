@@ -1,7 +1,12 @@
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, redirect
 from firebaseConfig.firebaseConfig import db
 from service import *
 from flask_cors import CORS
+import stripe
+import os
+from dotenv import load_dotenv
+import json
+import uuid
 from datetime import datetime
 from firebaseConfig.FirebaseDriver import FirebaseDriver
 from twilio.rest import Client
@@ -10,6 +15,13 @@ import random
 app = Flask(__name__)
 
 CORS(app)
+
+load_dotenv()  # loads env variables from project's root
+
+stripe.api_key = os.getenv("STRIPE_API_KEY")
+
+YOUR_DOMAIN = 'http://localhost:5000'  # Change later
+
 
 # Endpoint to send OTP
 @app.route('/otp/send', methods=['POST'])
@@ -60,6 +72,7 @@ def check_otp():
 def serve_index():
     return send_from_directory('static', 'index.html')
 
+
 @app.route('/admin', methods=['POST'])
 def create_admin():
     """
@@ -77,13 +90,12 @@ def create_admin():
     existing_user = db.collection('admin').where('email', '==', user_data.get('email')).get()
     if existing_user:
         return {"success": False, "message": "User with this email already exists", "user_id": None}
-    
+
     if user_data['permission_key'] != "YOLO_SECURITY_CODE_71862736":
         return {"success": False, "message": "Request Rejected Unautharized access detected!", "user_id": None}
-    
+
     if user_data['password'] != user_data['confirmPassword']:
         return {"success": False, "message": "Password mismatch, try again", "user_id": None}
-
 
     try:
         # Add the user to Firestore
@@ -93,6 +105,7 @@ def create_admin():
         return {"success": True, "message": "User created successfully", "user_id": user_ref[1].id}
     except Exception as e:
         return {"success": False, "message": str(e), "user_id": None}
+
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
@@ -106,12 +119,12 @@ def admin_login():
             return {"success": False, "message": "Invalid email or password", "user": None}
 
         user = query[0].to_dict()
-        user['confirmPassword'] = '' 
+        user['confirmPassword'] = ''
         print(user['password'])
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
             return {"success": False, "message": "Invalid email or password", "user": None}
-        
+
         return {"success": True, "message": "Login successful", "user": user['name']}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
@@ -224,42 +237,35 @@ def get_media():
         return jsonify(result)
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
-    
-
 
 
 # developer API endpoint
-@app.route('/developers')
-def fetchInfo(name: str):
-    # TODO: if it's been a month, reset the quota
-    # Note: All tokens share the same quota
-    pass
 
 
-@app.route('/developers/generate')
+@app.route('/developers/generate', methods=['POST'])
 def generateToken():
     pass
 
 
-@app.route('/developers/invalidate')
+@app.route('/developers/invalidate', methods=['POST'])
 def invalidateToken():
     pass
 
 
 # developer related API endpoints
-@app.route('/developers')
+@app.route('/developers', methods=['POST'])
 def fetch_dev_info(name: str):
     # TODO: if it's been a month, reset the quota
     # Note: All tokens share the same quota
     pass
 
 
-@app.route('/developers/generate')
+@app.route('/developers/generate', methods=['GET'])
 def generateApiToken():
     pass
 
 
-@app.route('/developers/invalidate')
+@app.route('/developers/invalidate', methods=['GET'])
 def invalidateApiToken():
     pass
 
@@ -364,9 +370,192 @@ def updateContentStatus():
     content_data['date'] = formatted_datetime
 
 
+# PAYMENT GATEWAY
+@app.route('/payment/', methods=['POST'])
+def make_payment():
+    details = request.get_json()
 
 
+@app.route('/create-checkout-session', methods=['POST'])
+def create_checkout_session():
+    """
+    request must have:
+    - lookup_key
 
+    :return:
+    """
+    payment_data = request.get_json()
+    print(payment_data['lookup_key'])
+
+    print(stripe.api_key)
+    prices = stripe.Price.list(
+            lookup_keys=[payment_data['lookup_key']],
+            expand=['data.product']
+        )
+    print(prices)
+    
+    try:
+        
+
+        checkout_session = stripe.checkout.Session.create(
+            line_items=[
+                {
+                    'price': prices.data[0].id,
+                    'quantity': 1,
+                },
+            ],
+            mode='subscription',
+            success_url=YOUR_DOMAIN + '/success.html',
+            cancel_url=YOUR_DOMAIN + '/cancel.html'
+            ,
+        )
+        return {"success": True, "url": checkout_session.url}
+    except Exception as e:
+        print(e)
+        return "Server error", 500
+
+
+@app.route('/create-portal-session', methods=['POST'])
+def customer_portal():
+    # For demonstration purposes, we're using the Checkout session to retrieve the customer ID.
+    # Typically, this is stored alongside the authenticated user in your database.
+    checkout_session_id = request.form.get('session_id')
+    checkout_session = stripe.checkout.Session.retrieve(checkout_session_id)
+
+    # This is the URL to which the customer will be redirected after they are
+    # done managing their billing with the portal.
+    return_url = YOUR_DOMAIN
+
+    portalSession = stripe.billing_portal.Session.create(
+        customer=checkout_session.customer,
+        return_url=return_url,
+    )
+    return redirect(portalSession.url, code=303)
+
+
+@app.route('/webhook', methods=['POST'])
+def webhook_received():
+    # Replace this endpoint secret with your endpoint's unique secret
+    # If you are testing with the CLI, find the secret by running 'stripe listen'
+    # If you are using an endpoint defined with the API or dashboard, look in your webhook settings
+    # at https://dashboard.stripe.com/webhooks
+    webhook_secret = os.getenv("WEBHOOK_SECRET")
+    request_data = json.loads(request.data)
+
+    if webhook_secret:
+        # Retrieve the event by verifying the signature using the raw body and secret if webhook signing is configured.
+        signature = request.headers.get('stripe-signature')
+        try:
+            event = stripe.Webhook.construct_event(
+                payload=request.data, sig_header=signature, secret=webhook_secret)
+            data = event['data']
+        except Exception as e:
+            return e
+        # Get the type of webhook event sent - used to check the status of PaymentIntents.
+        event_type = event['type']
+    else:
+        data = request_data['data']
+        event_type = request_data['type']
+    data_object = data['object']
+
+    print('event ' + event_type)
+
+    if event_type == 'checkout.session.completed':
+        print('🔔 Payment succeeded!')
+    elif event_type == 'customer.subscription.trial_will_end':
+        print('Subscription trial will end')
+    elif event_type == 'customer.subscription.created':
+        print('Subscription created %s', event.id)
+    elif event_type == 'customer.subscription.updated':
+        print('Subscription created %s', event.id)
+    elif event_type == 'customer.subscription.deleted':
+        # handle subscription canceled automatically based
+        # upon your subscription settings. Or if the user cancels it.
+        print('Subscription canceled: %s', event.id)
+
+    return jsonify({'status': 'success'})
+
+
+# Collections endpoints
+
+@app.route('/collections/', methods=['GET'])
+def fetch_collections():
+    collections = []
+
+    # Query all collections
+    collection_ref = db.collection('collections').stream()
+    for doc in collection_ref:
+        collection_data = doc.to_dict()
+        collections.append(collection_data)
+
+    return jsonify(collections), 200
+
+
+@app.route('/collections/search ', methods=["GET"])
+def search_collections():
+    keys = request.args.get('keys')
+    print(keys)
+    if keys:
+        key_list = keys.split(',')
+    else:
+        return jsonify({'error': "EMPTY_KEYS"}), 400
+
+
+@app.route('/collections/', methods=['POST'])
+def create_collection():
+    """
+
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No JSON data received'}), 400
+
+    # Extracting fields from the JSON
+    title = data.get('title')
+    description = data.get('description')
+    keywords = data.get('keywords')
+    contents = list(data.get('contents'))
+    duration = data.get('duration')
+    premium = data.get('premium')
+
+    # Generate a unique ID
+    unique_id = str(uuid.uuid4())
+
+    # Write data to Firestore
+    collection_ref = db.collection('collections').document(unique_id)
+    collection_ref.set({
+        'title': title,
+        'description': description,
+        'keywords': keywords,
+        'contents': contents,
+        'duration': duration,
+        'premium': premium
+    })
+
+    return jsonify({'message': 'Collection created successfully', 'collection_id': unique_id}), 201
+
+
+@app.route('/collections/<collection_id>', methods=['DELETE'])
+def delete_collections(collection_id):
+    # Check if the collection exists
+    collection_ref = db.collection('collections').document(collection_id)
+    if not collection_ref.get().exists:
+        return jsonify({'error': 'Collection not found'}), 404
+
+    # Delete the collection
+    collection_ref.delete()
+
+    return jsonify({'message': 'Collection deleted successfully'}), 200
+
+
+@app.route('/collections/', methods=["PUT"])
+def edit_collections():
+    pass
+
+
+@app.route('/collections/', methods=['POST'])
+def assign_collections():
+    pass
 
 
 if __name__ == '__main__':
