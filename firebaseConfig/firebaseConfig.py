@@ -7,7 +7,7 @@ from firebase_admin import credentials, firestore, db
 try:
 
     cert_str = os.getenv("FIREBASE_CONFIG")  # Read Firebase config from environment variable
-    print(cert_str)
+    
 
     if cert_str:
         cert = json.loads(cert_str)

@@ -5,6 +5,7 @@ from engine import keyword_engine
 import time
 from random import shuffle
 import bcrypt
+from twilio.rest import Client
 
 def media_from_keywords(keywords, media_type):
     url = "https://api.themoviedb.org/3/discover/" + media_type
@@ -392,6 +393,18 @@ def verify_password(password, hashed_password):
     print(hashed_password)
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
 
+def approve_user(u_hash, u_email):
+    #ui hash is a string but db_hash is _byteString with key as password
+    users_ref = db.collection('users')
+    query = users_ref.where('email', '==', u_email).limit(1).get()
+    if len(query) == 1:
+        user = query[0]
+        db_hash_byte_string = user.get('password')
+        u_hash_byte_string = u_hash.encode('utf-8')
+        if u_hash_byte_string == db_hash_byte_string:
+            return True 
+    return False
+
 
 def hash_password(password):
     # Generate a salt and hash the password
@@ -399,6 +412,37 @@ def hash_password(password):
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed_password
 
+def get_collections(keywords):
+    pass
 
+def get_promoted_content(media_type):
+    #fetch the content data and keywords in the database (if the status approved & matches the keyword list stored) and check the date of store.. it should not be more than a month before
+    #compare: are there any similar keyword set in the users keyword list which matches with content keywords
+    #if so return that list of object by appending it to the top of the return object
+    # we should maintain the media type when fetching
+    pass
+    
 
+def send_message(otp, phone):
+    account_sid = "ACbd96a0cd59a5ac3fcd2b40cf0a785304"
+    auth_token = "1649fba76f6a6ec9a40c1ff6a3ed6de8"
 
+    # Create Twilio Client
+    client = Client(account_sid, auth_token)
+
+    # Sender's WhatsApp number (must be a Twilio Sandbox number)
+    from_whatsapp_number = 'whatsapp:+14155238886'
+
+    # Recipient's WhatsApp number
+    to_whatsapp_number = 'whatsapp:'+phone  # Include country code without '+' or '00'
+
+    # Message content
+    message = 'Your OTP CODE : ' + otp
+
+    # Send message
+    message = client.messages.create(
+                                body=message,
+                                from_=from_whatsapp_number,
+                                to=to_whatsapp_number
+                            )
+    return True
