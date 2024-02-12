@@ -142,6 +142,7 @@ def create_user():
     try:
         user_data['confirmPassword'] = ''
         user_data['role'] = 'user'
+        user_data['premium'] = "False"
         # Add the user to Firestore
         user_data['password'] = hash_password(user_data['password'])
         user_ref = db.collection('users').add(user_data)
@@ -542,7 +543,7 @@ def webhook_received():
 
 # Collections endpoints
 
-@app.route('/collections/', methods=['GET'])
+@app.route('/collections', methods=['GET'])
 def fetch_collections():
     collections = []
 
@@ -568,7 +569,7 @@ def search_collections():
         return jsonify({'error': "EMPTY_KEYS"}), 400
 
 
-@app.route('/collections/', methods=['POST'])
+@app.route('/collections', methods=['POST'])
 def create_collection():
     """
 
