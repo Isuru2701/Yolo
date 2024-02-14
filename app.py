@@ -214,14 +214,23 @@ def get_animes():
 
 # public endpoint need a dynamic api key assiging and validation for developer role unlocked users
 @app.route('/api/media', methods=[
-    'GET'])  # example request : http://localhost:5000/api/media?title=TITLE_OF_THE_CONTENT&media_type=MEDIA (movie,tv, anime_movie, anime_tv, song, book)
+    'GET'])  # example request : http://localhost:5000/api/media?title=TITLE_OF_THE_CONTENT&media_type=MEDIA&api_key=JSHBKSDBKSDCNJNSKJNJSKNAKJNAK (movie,tv, anime_movie, anime_tv, song, book)
 def get_media():
     # Get parameters from the query string
     title = request.args.get('title', default='', type=str)
     media_type = request.args.get('media_type', default='', type=str)
+    api_key = request.args.get('api_key', default='', type=str)
 
-    if not title or not media_type:
-        return jsonify({"error": "Both 'title' and 'media_type' parameters are required."}), 400
+    if not title or not media_type or not api_key:
+        return jsonify({"error": "Both 'title' and 'media_type' and api_key parameters are required."}), 400
+    query = db.collection('users').where('api_key', '==', api_key).limit(1).get()
+    if not query:
+        return jsonify({'error': 'invalid api Key or key not exist'}), 404
+
+    count = query[0].to_dict()['request_count']
+    query[0].reference.set({
+        'request_count' : count + 1
+    }, merge = True)
 
     if media_type == "movie" or media_type == "tv":
         result = media_from_title(title=title, media_type=media_type)
@@ -241,18 +250,52 @@ def get_media():
     else:
         return jsonify({"error": "An error occurred while fetching media data."}), 500
 
-
 # developer API endpoint
-
-
 @app.route('/developers/generate', methods=['POST'])
 def generateToken():
-    pass
+    """
+    Generate an API key for a user and save it in the database along with setting request count to 0.
+    
+    Payload:
+    {
+        "email": "example@email.com",
+        "hash": "akbjhadbjhbsdc"
+    }
+    """
+    user_data = request.get_json()
+    if 'email' not in user_data or 'hash' not in user_data:
+        return jsonify({'error': 'Missing required fields (email, hash)'}), 400
+    users_ref = db.collection('users')
+    query = users_ref.where('email', '==', user_data['email']).limit(1).get()
+    if not query:
+        return jsonify({'error': 'User with provided email does not exist'}), 404
+    api_key = str(uuid.uuid4())
+    user_doc = query[0]
+    user_doc.reference.set({
+        'api_key': api_key,
+        'request_count': 0
+    }, merge=True)
+
+    return jsonify({'api_key': api_key}), 200
+    
 
 
-@app.route('/developers/invalidate', methods=['POST'])
-def invalidateToken():
-    pass
+@app.route('/developers/usage', methods=['POST'])
+def usage():
+    """
+    Endpoint to send request count for developers.
+    """
+    user_data = request.get_json()
+    if 'email' not in user_data:
+        return jsonify({'error': 'Missing required field (email)'}), 400
+    users_ref = db.collection('users')
+    query = users_ref.where('email', '==', user_data['email']).limit(1).get()
+    if not query:
+        return jsonify({'error': 'User with provided email does not exist'}), 404
+    request_count = query[0].to_dict().get('request_count')
+    if request_count is None:
+        return jsonify({'error': 'User is not identified as a developer'}), 400
+    return jsonify({'success': True, 'request_count': request_count})
 
 
 # developer related API endpoints
@@ -262,15 +305,6 @@ def fetch_dev_info(name: str):
     # Note: All tokens share the same quota
     pass
 
-
-@app.route('/developers/generate', methods=['GET'])
-def generateApiToken():
-    pass
-
-
-@app.route('/developers/invalidate', methods=['GET'])
-def invalidateApiToken():
-    pass
 
 
 @app.route('/api/', methods=['POST'])
