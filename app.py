@@ -121,12 +121,11 @@ def admin_login():
 
         user = query[0].to_dict()
         user['confirmPassword'] = ''
-        print(user['password'])
         # Verify the password using bcrypt
         if not verify_password(login_data['password'], user['password']):
             return {"success": False, "message": "Invalid email or password", "user": None}
 
-        return {"success": True, "message": "Login successful", "user": user['name']}
+        return {"success": True, "message": "Login successful", "user": user['name'], "admin_id": query[0].id, "admin_hash": user['password'].decode('utf-8')}
     except Exception as e:
         return {"success": False, "message": str(e), "user": None}
 
@@ -341,9 +340,11 @@ def fetch_all_requests():
     contents_ref = db.collection('content').stream()
     for doc in contents_ref:
         contents_data = doc.to_dict()
+        contents_data['request_id'] = doc.id  # Add document ID as request_id
         contents.append(contents_data)
 
     return jsonify(contents), 200
+
 
 
 # accept or reject boost request
