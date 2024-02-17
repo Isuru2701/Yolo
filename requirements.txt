@@ -5,3 +5,4 @@ python-dotenv~=1.0.0
 DateTime~=4.3
 twilio~=8.13.0
 bcrypt~=4.1.2
+transformers~=4.12.0
