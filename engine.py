@@ -1,13 +1,16 @@
-from transformers import pipeline
+import requests
+from dotenv import load_dotenv
+import os
 
-# Load pre-trained model for topic extraction
-topic_extraction_pipeline = pipeline("zero-shot-classification")
+API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+headers = {"Authorization": f"Bearer {os.getenv('HF_SECRET')}"}
 
-#prompt
-def keyword_engine(prompt):
-    if prompt is not None:
-        # Predefined labels or genres
-        labels = ['betrayal',
+#TODO: These values are limited to 10 labels each. As we have 113 labels, lets divide them into categories and query them in batches. If a label is < THRESHOLD, ignore them
+def query(payload):
+    response = requests.post(API_URL, headers=headers, json=payload)
+    return response.json()
+
+labels = ['betrayal',
                   'competition',
                   'bank heist',
                   'neorealism',
@@ -120,11 +123,8 @@ def keyword_engine(prompt):
                   'based on play',
                   'anti-hero',
                   'multiple storyline']
-
-        # Extract topics from prompts and map them to labels
-        # Extract topics using zero-shot classification
-        topic_results = topic_extraction_pipeline(prompt, labels)
-
-        # Get top predicted label
-        predicted_label = topic_results['labels'][0:3]
-        return predicted_label
+output = query({
+        "inputs": "Hi, I recently bought a device from your company but it is not working as advertised and I would like to get reimbursed!",
+        "parameters": {"candidate_labels": labels}
+})
+print(output)
